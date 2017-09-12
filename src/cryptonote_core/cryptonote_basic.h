@@ -199,57 +199,34 @@ namespace cryptonote
     BEGIN_SERIALIZE_OBJECT()
       FIELDS(*static_cast<transaction_prefix *>(this))
 
-      if (version == 1)
+      ar.tag("signatures");
+      ar.begin_array();
+      PREPARE_CUSTOM_VECTOR_SERIALIZATION(vin.size(), signatures);
+      bool signatures_not_expected = signatures.empty();
+      if (!signatures_not_expected && vin.size() != signatures.size())
+        return false;
+
+      for (size_t i = 0; i < vin.size(); ++i)
       {
-        ar.tag("signatures");
-        ar.begin_array();
-        PREPARE_CUSTOM_VECTOR_SERIALIZATION(vin.size(), signatures);
-        bool signatures_not_expected = signatures.empty();
-        if (!signatures_not_expected && vin.size() != signatures.size())
+        size_t signature_size = get_signature_size(vin[i]);
+        if (signatures_not_expected)
+        {
+          if (0 == signature_size)
+            continue;
+          else
+            return false;
+        }
+
+        PREPARE_CUSTOM_VECTOR_SERIALIZATION(signature_size, signatures[i]);
+        if (signature_size != signatures[i].size())
           return false;
 
-        for (size_t i = 0; i < vin.size(); ++i)
-        {
-          size_t signature_size = get_signature_size(vin[i]);
-          if (signatures_not_expected)
-          {
-            if (0 == signature_size)
-              continue;
-            else
-              return false;
-          }
+        FIELDS(signatures[i]);
 
-          PREPARE_CUSTOM_VECTOR_SERIALIZATION(signature_size, signatures[i]);
-          if (signature_size != signatures[i].size())
-            return false;
-
-          FIELDS(signatures[i]);
-
-          if (vin.size() - i > 1)
-            ar.delimit_array();
-        }
-        ar.end_array();
+        if (vin.size() - i > 1)
+          ar.delimit_array();
       }
-      else
-      {
-        ar.tag("rct_signatures");
-        if (!vin.empty())
-        {
-          ar.begin_object();
-          bool r = rct_signatures.serialize_rctsig_base(ar, vin.size(), vout.size());
-          if (!r || !ar.stream().good()) return false;
-          ar.end_object();
-          if (rct_signatures.type != rct::RCTTypeNull)
-          {
-            ar.tag("rctsig_prunable");
-            ar.begin_object();
-            r = rct_signatures.p.serialize_rctsig_prunable(ar, rct_signatures.type, vin.size(), vout.size(),
-                vin[0].type() == typeid(txin_to_key) ? boost::get<txin_to_key>(vin[0]).key_offsets.size() - 1 : 0);
-            if (!r || !ar.stream().good()) return false;
-            ar.end_object();
-          }
-        }
-      }
+      ar.end_array();
     END_SERIALIZE()
 
   private:
@@ -408,6 +385,7 @@ namespace cryptonote
 
     BEGIN_SERIALIZE_OBJECT()
       VARINT_FIELD_N("major_version", b.major_version);
+      if(b.major_version > CURRENT_BYTECOIN_BLOCK_MAJOR_VERSION) return false;
       VARINT_FIELD_N("minor_version", b.minor_version);
       VARINT_FIELD(timestamp);
       FIELD_N("prev_id", b.prev_id);
@@ -480,10 +458,17 @@ namespace cryptonote
 
     BEGIN_SERIALIZE()
       VARINT_FIELD(major_version)
+      if(major_version > BLOCK_MAJOR_VERSION_3) return false;
       VARINT_FIELD(minor_version)
-      VARINT_FIELD(timestamp)
+      if (BLOCK_MAJOR_VERSION_1 == major_version)
+      {
+        VARINT_FIELD(timestamp)
+      }
       FIELD(prev_id)
-      FIELD(nonce)
+      if (BLOCK_MAJOR_VERSION_1 == major_version)
+      {
+        FIELD(nonce)
+      }
     END_SERIALIZE()
   };
 
@@ -496,6 +481,11 @@ namespace cryptonote
 
     BEGIN_SERIALIZE_OBJECT()
       FIELDS(*static_cast<block_header *>(this))
+      if (BLOCK_MAJOR_VERSION_2 <= major_version)
+      {
+        auto sbb = make_serializable_bytecoin_block(*this, false, false);
+        FIELD_N("parent_block", sbb);
+      }
       FIELD(miner_tx)
       FIELD(tx_hashes)
     END_SERIALIZE()
@@ -575,7 +565,7 @@ namespace cryptonote
       };
 
 
-    struct keypair
+  struct keypair
   {
     crypto::public_key pub;
     crypto::secret_key sec;
