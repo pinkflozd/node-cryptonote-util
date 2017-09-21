@@ -264,6 +264,49 @@ void address_decode(const Nan::FunctionCallbackInfo<v8::Value>& info) {
     }
 }
 
+void address_decode_integrated(const Nan::FunctionCallbackInfo<v8::Value>& info) {
+
+	if (info.Length() < 1)
+		return THROW_ERROR_EXCEPTION("You must provide one argument.");
+
+	Local<Object> target = info[0]->ToObject();
+
+	if (!Buffer::HasInstance(target))
+		return THROW_ERROR_EXCEPTION("Argument should be a buffer object.");
+
+	blobdata input = std::string(Buffer::Data(target), Buffer::Length(target));
+
+	blobdata data;
+	uint64_t prefix;
+	if (!tools::base58::decode_addr(input, prefix, data))
+	{
+		info.GetReturnValue().Set(Nan::Undefined());
+	}
+	//    info.GetReturnValue().Set(Nan::Undefined());
+
+	integrated_address iadr;
+	if (!::serialization::parse_binary(data, iadr) || !crypto::check_key(iadr.adr.m_spend_public_key) || !crypto::check_key(iadr.adr.m_view_public_key))
+	{
+		if (data.length())
+		{
+			data = uint64be_to_blob(prefix) + data;
+		}
+		else
+		{
+			info.GetReturnValue().Set(Nan::Undefined());
+		}
+		v8::Local<v8::Value> returnValue = Nan::CopyBuffer((char*)data.data(), data.size()).ToLocalChecked();
+		info.GetReturnValue().Set(
+			returnValue
+		);
+
+	}
+	else
+	{
+		info.GetReturnValue().Set(Nan::New(static_cast<uint32_t>(prefix)));
+	}
+}
+
 // void init(Handle<Object> exports) {
 //     exports->Set(String::NewSymbol("construct_block_blob"), FunctionTemplate::New(construct_block_blob)->GetFunction());
 //     exports->Set(String::NewSymbol("get_block_id"), FunctionTemplate::New(get_block_id)->GetFunction());
