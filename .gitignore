@@ -1,1 +1,5 @@
 /nbproject/
+/src/.vs/src/v15/ipch/AutoPCH/164c061e4701c73c/*.ipch
+/src/.vs
+/src/contrib/epee/demo/.npmignore
+/src/contrib/epee/tests/.npmignore
