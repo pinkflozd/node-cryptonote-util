@@ -307,6 +307,33 @@ void address_decode_integrated(const Nan::FunctionCallbackInfo<v8::Value>& info)
 	}
 }
 
+void get_previous_block_hash(const Nan::FunctionCallbackInfo<v8::Value>& info) {
+	if (info.Length() < 1)
+		return THROW_ERROR_EXCEPTION("You must provide one argument.");
+
+	Local<Object> target = info[0]->ToObject();
+
+	if (!Buffer::HasInstance(target))
+		return THROW_ERROR_EXCEPTION("Argument should be a buffer object.");
+
+	blobdata input = std::string(Buffer::Data(target), Buffer::Length(target));
+	blobdata output;
+
+	//convert
+	block b = AUTO_VAL_INIT(b);
+	if (!parse_and_validate_block_from_blob(input, b)) {
+		return THROW_ERROR_EXCEPTION("Failed to parse Block");
+	}
+
+	if (!block_to_blob(b, output))
+		return THROW_ERROR_EXCEPTION("Failed to convert block to blob");
+
+	v8::Local<v8::Value> returnValue = Nan::CopyBuffer((char*)output.data(), output.size()).ToLocalChecked();
+	info.GetReturnValue().Set(
+		returnValue
+	);
+}
+
 // void init(Handle<Object> exports) {
 //     exports->Set(String::NewSymbol("construct_block_blob"), FunctionTemplate::New(construct_block_blob)->GetFunction());
 //     exports->Set(String::NewSymbol("get_block_id"), FunctionTemplate::New(get_block_id)->GetFunction());
@@ -321,7 +348,8 @@ NAN_MODULE_INIT(init) {
     Nan::Set(target, Nan::New("convert_blob").ToLocalChecked(), Nan::GetFunction(Nan::New<FunctionTemplate>(convert_blob)).ToLocalChecked());
     Nan::Set(target, Nan::New("convert_blob_bb").ToLocalChecked(), Nan::GetFunction(Nan::New<FunctionTemplate>(convert_blob_bb)).ToLocalChecked());
     Nan::Set(target, Nan::New("address_decode").ToLocalChecked(), Nan::GetFunction(Nan::New<FunctionTemplate>(address_decode)).ToLocalChecked());
-    Nan::Set(target, Nan::New("address_decode_integrated").ToLocalChecked(), Nan::GetFunction(Nan::New<FunctionTemplate>(address_decode_integrated)).ToLocalChecked());
+	Nan::Set(target, Nan::New("address_decode_integrated").ToLocalChecked(), Nan::GetFunction(Nan::New<FunctionTemplate>(address_decode_integrated)).ToLocalChecked());
+	Nan::Set(target, Nan::New("get_previous_block_hash").ToLocalChecked(), Nan::GetFunction(Nan::New<FunctionTemplate>(get_previous_block_hash)).ToLocalChecked());
 }
 
 NODE_MODULE(cryptonote, init)
