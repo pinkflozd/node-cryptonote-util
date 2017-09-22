@@ -334,6 +334,26 @@ void get_previous_block_hash(const Nan::FunctionCallbackInfo<v8::Value>& info) {
 	);
 }
 
+void cn_slow_hash_impl(char *data, uint32_t length, char *hash);
+
+void cn_slow_hash(const Nan::FunctionCallbackInfo<v8::Value>& info) {
+	if (info.Length() < 1)
+		return THROW_ERROR_EXCEPTION("You must provide one argument.");
+
+	Local<Object> target = info[0]->ToObject();
+
+	if (!Buffer::HasInstance(target))
+		return THROW_ERROR_EXCEPTION("Argument should be a buffer object.");
+
+	char crytoNightHash[32] = { 0 };
+	cn_slow_hash_impl(Buffer::Data(target), Buffer::Length(target), crytoNightHash);
+
+	v8::Local<v8::Value> returnValue = Nan::CopyBuffer((char*)crytoNightHash, sizeof(crytoNightHash)).ToLocalChecked();
+	info.GetReturnValue().Set(
+		returnValue
+	);
+}
+
 // void init(Handle<Object> exports) {
 //     exports->Set(String::NewSymbol("construct_block_blob"), FunctionTemplate::New(construct_block_blob)->GetFunction());
 //     exports->Set(String::NewSymbol("get_block_id"), FunctionTemplate::New(get_block_id)->GetFunction());
@@ -350,6 +370,7 @@ NAN_MODULE_INIT(init) {
     Nan::Set(target, Nan::New("address_decode").ToLocalChecked(), Nan::GetFunction(Nan::New<FunctionTemplate>(address_decode)).ToLocalChecked());
 	Nan::Set(target, Nan::New("address_decode_integrated").ToLocalChecked(), Nan::GetFunction(Nan::New<FunctionTemplate>(address_decode_integrated)).ToLocalChecked());
 	Nan::Set(target, Nan::New("get_previous_block_hash").ToLocalChecked(), Nan::GetFunction(Nan::New<FunctionTemplate>(get_previous_block_hash)).ToLocalChecked());
+	Nan::Set(target, Nan::New("cn_slow_hash").ToLocalChecked(), Nan::GetFunction(Nan::New<FunctionTemplate>(cn_slow_hash)).ToLocalChecked());
 }
 
 NODE_MODULE(cryptonote, init)
