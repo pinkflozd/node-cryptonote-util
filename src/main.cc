@@ -325,7 +325,8 @@ void get_previous_block_hash(const Nan::FunctionCallbackInfo<v8::Value>& info) {
 		return THROW_ERROR_EXCEPTION("Failed to parse Block");
 	}
 
-	v8::Local<v8::Value> returnValue = Nan::CopyBuffer((char*)b.prev_id.data, sizeof(b.prev_id.data)).ToLocalChecked();
+	char *cstr = reinterpret_cast<char*>(&b.prev_id);
+	v8::Local<v8::Value> returnValue = Nan::CopyBuffer((char*)cstr, 32).ToLocalChecked();
 	info.GetReturnValue().Set(
 		returnValue
 	);
