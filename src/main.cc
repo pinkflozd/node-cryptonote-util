@@ -317,7 +317,7 @@ void get_previous_block_hash(const Nan::FunctionCallbackInfo<v8::Value>& info) {
 		return THROW_ERROR_EXCEPTION("Argument should be a buffer object.");
 
 	blobdata input = std::string(Buffer::Data(target), Buffer::Length(target));
-	blobdata output;
+	blobdata output = "";
 
 	//convert
 	block b = AUTO_VAL_INIT(b);
@@ -325,10 +325,7 @@ void get_previous_block_hash(const Nan::FunctionCallbackInfo<v8::Value>& info) {
 		return THROW_ERROR_EXCEPTION("Failed to parse Block");
 	}
 
-	if (!block_to_blob(b, output))
-		return THROW_ERROR_EXCEPTION("Failed to convert block to blob");
-
-	v8::Local<v8::Value> returnValue = Nan::CopyBuffer((char*)output.data(), output.size()).ToLocalChecked();
+	v8::Local<v8::Value> returnValue = Nan::CopyBuffer((char*)b.prev_id.data, sizeof(b.prev_id.data)).ToLocalChecked();
 	info.GetReturnValue().Set(
 		returnValue
 	);
